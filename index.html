@@ -18,7 +18,6 @@
             overflow-x: hidden;
         }
 
-        /* Animated Background */
         .bg-animation {
             position: fixed;
             top: 0;
@@ -44,7 +43,6 @@
             100% { transform: translate(50px, 50px); }
         }
 
-        /* Header */
         .header {
             background: rgba(0,0,0,0.8);
             backdrop-filter: blur(10px);
@@ -111,7 +109,6 @@
             background: #cc2255;
         }
 
-        /* Modal */
         .modal {
             display: none;
             position: fixed;
@@ -165,7 +162,6 @@
             color: #ff3366;
         }
 
-        /* Admin Panel */
         .admin-panel {
             display: none;
             background: rgba(0,0,0,0.9);
@@ -222,7 +218,6 @@
             width: 100%;
         }
 
-        /* Upload Area */
         .upload-area {
             display: none;
             background: rgba(0,0,0,0.7);
@@ -294,7 +289,6 @@
             resize: vertical;
         }
 
-        /* Posts List */
         .posts-list {
             margin: 20px 0;
         }
@@ -372,7 +366,6 @@
             color: #fff;
         }
 
-        /* Server Status Card */
         .server-card {
             background: linear-gradient(135deg, rgba(255,51,102,0.2), rgba(0,0,0,0.8));
             border: 1px solid #ff3366;
@@ -413,7 +406,6 @@
             word-break: break-all;
         }
 
-        /* How to Connect */
         .steps {
             display: flex;
             flex-direction: column;
@@ -435,7 +427,6 @@
             color: #ff3366;
         }
 
-        /* IP Box */
         .ip-box {
             background: #1a1a1a;
             border-radius: 10px;
@@ -465,7 +456,6 @@
             font-size: 13px;
         }
 
-        /* FAQ */
         .faq-item {
             background: rgba(0,0,0,0.5);
             margin: 10px 0;
@@ -495,7 +485,6 @@
             max-height: 300px;
         }
 
-        /* Footer */
         .footer {
             background: #000;
             padding: 30px 16px;
@@ -540,7 +529,6 @@
             font-size: 14px;
         }
 
-        /* Welcome Section */
         .welcome {
             text-align: center;
             margin: 20px 0;
@@ -563,6 +551,13 @@
         h2 {
             font-size: 20px;
             margin: 20px 0 12px;
+        }
+
+        .sync-status {
+            font-size: 10px;
+            color: #888;
+            text-align: right;
+            margin-top: 5px;
         }
 
         @media (min-width: 768px) {
@@ -734,10 +729,11 @@
 
         <!-- POSTS LIST SECTION -->
         <div id="postsSection" style="margin: 20px 0;">
-            <h2>DROP FILE & INFORMATION</h2>
+            <h2>📢 DROP FILE & INFORMATION</h2>
             <div id="postsList" class="posts-list">
-                <p style="text-align:center; color:#888;">Belum ada postingan</p>
+                <p style="text-align:center; color:#888;">⏳ Loading postingan...</p>
             </div>
+            <div class="sync-status" id="syncIndicator">☁️ Cloud sync active</div>
         </div>
 
         <!-- How to Connect -->
@@ -752,7 +748,7 @@
         <h2 id="faq">❓ FAQ</h2>
         <div class="faq-item">
             <div class="faq-question" onclick="toggleFAQ(this)">Is it free to play?</div>
-            <div class="faq-answer">Yes! You just need GTA San Andreas and SA-MP. Server ini gratis selamanya (klo bu bisa kali wkwk)</div>
+            <div class="faq-answer">Yes! You just need GTA San Andreas and SA-MP. Server ini gratis selamanya (klo bu bisa kali wkwkwk)</div>
         </div>
         <div class="faq-item">
             <div class="faq-question" onclick="toggleFAQ(this)">What's the server IP?</div>
@@ -785,25 +781,106 @@
         const ADMIN_EMAIL = "robby5pryk@gmail.com";
         const ADMIN_PASSWORD = "afreldocommunitymay2025";
         
+        // ============ CLOUD STORAGE (FREE - NO LOGIN) ============
+        // Menggunakan Google Apps Script sebagai database gratis
+        // Data tersimpan di Google Spreadsheet milik Afreldo
+        const CLOUD_API = "https://script.google.com/macros/s/AKfycbxt1KJP5e9Oz4xFAqwTPn-SfpRv29tLnnY0WozNxJ8rQ_acZuDWuCJuCOiflJSNV9Q/exec";
+        // Ganti dengan URL Apps Script lu nanti
+        
+        // SEMENTARA: pake localStorage dulu sampai lu punya Apps Script
+        // TAPI ini tetap sync antar device kalo pake Apps Script!
+        
         let isLoggedIn = false;
         let currentPostType = 'file';
+        let posts = [];
         
-        // Load posts from localStorage
-        let posts = JSON.parse(localStorage.getItem('afreldo_posts') || '[]');
+        // Load from cloud (Google Apps Script)
+        async function loadFromCloud() {
+            try {
+                document.getElementById('postsList').innerHTML = '<p style="text-align:center; color:#888;">⏳ Loading dari cloud...</p>';
+                
+                // Kalo belum ada CLOUD_API, pake localStorage dulu
+                if(CLOUD_API.includes("YourScriptID")) {
+                    const localData = localStorage.getItem('afreldo_posts');
+                    if(localData) {
+                        posts = JSON.parse(localData);
+                    } else {
+                        posts = [];
+                    }
+                    renderPostsList();
+                    document.getElementById('syncIndicator').innerHTML = '📱 Local storage mode';
+                    return;
+                }
+                
+                const response = await fetch(CLOUD_API + "?action=get");
+                if(response.ok) {
+                    const data = await response.json();
+                    if(data.posts && Array.isArray(data.posts)) {
+                        posts = data.posts;
+                        localStorage.setItem('afreldo_posts', JSON.stringify(posts));
+                        renderPostsList();
+                        document.getElementById('syncIndicator').innerHTML = '☁️ Cloud sync active ✓';
+                    } else {
+                        throw new Error('No data');
+                    }
+                } else {
+                    throw new Error('Network error');
+                }
+            } catch(e) {
+                console.log('Cloud load failed, using local:', e);
+                const localData = localStorage.getItem('afreldo_posts');
+                if(localData) {
+                    posts = JSON.parse(localData);
+                } else {
+                    posts = [];
+                }
+                renderPostsList();
+                document.getElementById('syncIndicator').innerHTML = '📱 Local mode (cloud unavailable)';
+            }
+        }
         
-        // Save posts to localStorage
-        function savePosts() {
+        // Save to cloud
+        async function saveToCloud() {
+            if(CLOUD_API.includes("YourScriptID")) {
+                localStorage.setItem('afreldo_posts', JSON.stringify(posts));
+                renderPostsList();
+                return;
+            }
+            
+            try {
+                const response = await fetch(CLOUD_API + "?action=save", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ posts: posts })
+                });
+                
+                if(response.ok) {
+                    document.getElementById('syncIndicator').innerHTML = '☁️ Saved to cloud ✓';
+                    setTimeout(() => {
+                        document.getElementById('syncIndicator').innerHTML = '☁️ Cloud sync active';
+                    }, 2000);
+                }
+            } catch(e) {
+                console.log('Save to cloud failed:', e);
+                document.getElementById('syncIndicator').innerHTML = '⚠️ Offline - saved locally';
+            }
+            
             localStorage.setItem('afreldo_posts', JSON.stringify(posts));
             renderPostsList();
         }
         
-        // Render posts list
+        // Save posts (wrapper)
+        async function savePosts() {
+            await saveToCloud();
+        }
+        
+        // Render posts
         function renderPostsList() {
             const container = document.getElementById('postsList');
             if(!container) return;
             
             if(posts.length === 0) {
-                container.innerHTML = '<p style="text-align:center; color:#888;">belum ada postingan</p>';
+                container.innerHTML = '<p style="text-align:center; color:#888;">gaada postingan</p>';
                 return;
             }
             
@@ -842,7 +919,6 @@
             return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
         }
         
-        // Set post type (file or text)
         function setPostType(type) {
             currentPostType = type;
             document.querySelectorAll('.post-type-btn').forEach(btn => btn.classList.remove('active'));
@@ -857,12 +933,11 @@
             }
         }
         
-        // Handle file upload
         function handleFileUpload(file) {
             if(!file) return;
             
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = async function(e) {
                 const newPost = {
                     id: Date.now(),
                     type: 'file',
@@ -873,8 +948,8 @@
                     date: new Date().toLocaleString()
                 };
                 posts.unshift(newPost);
-                savePosts();
-                document.getElementById('uploadStatus').innerHTML = '✅ File berhasil diupload: ' + file.name;
+                await savePosts();
+                document.getElementById('uploadStatus').innerHTML = 'file berhasil di simpen';
                 setTimeout(() => {
                     document.getElementById('uploadStatus').innerHTML = '';
                 }, 3000);
@@ -882,13 +957,12 @@
             reader.readAsDataURL(file);
         }
         
-        // Handle text post
-        function handleTextPost() {
+        async function handleTextPost() {
             const title = document.getElementById('textTitle').value.trim();
             const content = document.getElementById('textContent').value.trim();
             
             if(!title) {
-                document.getElementById('textStatus').innerHTML = '❌ Judul tidak boleh kosong!';
+                document.getElementById('textStatus').innerHTML = 'judul gaboleh kosong';
                 setTimeout(() => {
                     document.getElementById('textStatus').innerHTML = '';
                 }, 2000);
@@ -896,7 +970,7 @@
             }
             
             if(!content) {
-                document.getElementById('textStatus').innerHTML = '❌ Konten tidak boleh kosong!';
+                document.getElementById('textStatus').innerHTML = 'konten gaboleh kosong';
                 setTimeout(() => {
                     document.getElementById('textStatus').innerHTML = '';
                 }, 2000);
@@ -911,17 +985,16 @@
                 date: new Date().toLocaleString()
             };
             posts.unshift(newPost);
-            savePosts();
+            await savePosts();
             
             document.getElementById('textTitle').value = '';
             document.getElementById('textContent').value = '';
-            document.getElementById('textStatus').innerHTML = '✅ Teks berhasil dipublikasikan!';
+            document.getElementById('textStatus').innerHTML = 'teks di plublikasi';
             setTimeout(() => {
                 document.getElementById('textStatus').innerHTML = '';
             }, 3000);
         }
         
-        // Download file post
         function downloadPost(index) {
             const post = posts[index];
             if(!post || post.type !== 'file' || !post.data) return;
@@ -932,19 +1005,19 @@
             link.click();
         }
         
-        // Delete post (admin only)
-        function deletePost(index) {
+        async function deletePost(index) {
             if(!isLoggedIn) {
-                alert('❌ lau siape');
+                alert('❌ lau sape mpruy');
                 return;
             }
             if(confirm('Hapus postingan ini?')) {
                 posts.splice(index, 1);
-                savePosts();
+                await savePosts();
+                alert('✅ Postingan dihapus');
             }
         }
         
-        // Drag & drop functionality
+        // Drag & drop
         const uploadFileArea = document.getElementById('uploadFileArea');
         if(uploadFileArea) {
             uploadFileArea.addEventListener('dragover', (e) => {
@@ -964,7 +1037,6 @@
             });
         }
         
-        // Login functions
         function openLogin() {
             document.getElementById('loginModal').style.display = 'flex';
         }
@@ -994,10 +1066,9 @@
             document.getElementById('adminPanel').classList.remove('show');
             document.getElementById('uploadArea').classList.remove('show');
             renderPostsList();
-            alert('Logout berhasil');
+            alert('👋 Logout berhasil');
         }
 
-        // Admin functions
         function updateServerStatus() {
             const status = document.getElementById('adminStatus').value;
             const statusElement = document.getElementById('serverStatus');
@@ -1008,31 +1079,31 @@
                 statusElement.innerHTML = '● OFFLINE';
                 statusElement.style.background = '#ff0000';
             }
-            alert(' Status server diubah menjadi ' + status.toUpperCase());
+            alert('✅ Status server diubah menjadi ' + status.toUpperCase());
         }
 
         function updateMaxPlayers() {
             const newMax = document.getElementById('adminMaxPlayers').value;
             document.getElementById('maxPlayers').innerText = newMax;
-            alert(' Max Players diubah menjadi ' + newMax);
+            alert('✅ Max Players diubah menjadi ' + newMax);
         }
 
         function updateWelcomeTitle() {
             const newTitle = document.getElementById('adminWelcomeTitle').value;
             document.getElementById('welcomeTitle').innerHTML = newTitle;
-            alert(' Welcome title diubah');
+            alert('✅ Welcome title diubah');
         }
 
         function updateWelcomeDesc() {
             const newDesc = document.getElementById('adminWelcomeDesc').value;
             document.getElementById('welcomeDesc').innerHTML = newDesc;
-            alert('Welcome description diubah');
+            alert('✅ Welcome description diubah');
         }
 
         function copyIP() {
             const ip = document.getElementById('ipText').innerText;
             navigator.clipboard.writeText(ip);
-            alert(' IP Copied: ' + ip);
+            alert('✅ IP Copied: ' + ip);
         }
 
         function toggleFAQ(element) {
@@ -1056,10 +1127,10 @@
 
         setInterval(autoStatusCheck, 60000);
         
-        // Initial render
-        renderPostsList();
+        // Load data saat halaman dibuka
+        loadFromCloud();
         
-        console.log(' Afreldo Community | Post System');
+        console.log('Afreldo Community | Ready');
     </script>
 </body>
 </html>
