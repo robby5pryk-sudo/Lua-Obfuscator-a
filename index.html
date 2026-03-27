@@ -803,7 +803,7 @@
             if(!container) return;
             
             if(posts.length === 0) {
-                container.innerHTML = '<p style="text-align:center; color:#888;">📢 Belum ada postingan. Login untuk membuat postingan!</p>';
+                container.innerHTML = '<p style="text-align:center; color:#888;">belum ada postingan</p>';
                 return;
             }
             
@@ -935,7 +935,7 @@
         // Delete post (admin only)
         function deletePost(index) {
             if(!isLoggedIn) {
-                alert('❌ Bukan afreldo');
+                alert('❌ lau siape');
                 return;
             }
             if(confirm('Hapus postingan ini?')) {
